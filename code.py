@@ -45,7 +45,7 @@ encoder = rotaryio.IncrementalEncoder(board.D1, board.D2)
 last_position = encoder.position
 
 
-# Functions Begin Here
+## Functions Begin Here
 
 # This function will scan all button states for changes
 def checkForButtonPress():
@@ -59,9 +59,28 @@ def checkForButtonPress():
                 #  if the button is released...
                 print("button released: ", i)
 
+def midiReceive():
+    msg = midi.receive()
+    if isinstance(msg, ControlChange):
+        print("control=", msg.control)
+        print("value=", msg.value)
+        print("channel=", msg.channel)
+        if msg.control == 47:
+            if msg.value == 127:
+                led.value = True
+            if msg.value == 0:
+                led.value = False
+    # Print all MIDI messages for debugging
+    elif msg is None:
+        pass
+    else:
+        print(msg)
+
+
 # Main Loop
 while True:
     checkForButtonPress()
+    midiReceive()
 
     # TODO: Make a toggle button function
     if foot_left.value:
@@ -79,23 +98,6 @@ while True:
         print('49', br)
         while foot_right.value:
             pass
-
-    # TODO: Make a MIDI receive function
-    msg = midi.receive()
-    if isinstance(msg, ControlChange):
-        print("control=", msg.control)
-        print("value=", msg.value)
-        print("channel=", msg.channel)
-        if msg.control == 47:
-            if msg.value == 127:
-                led.value = True
-            if msg.value == 0:
-                led.value = False
-    # Print all MIDI messages for debugging
-    elif msg is None:
-        pass
-    else:
-        print(msg)
 
     # This rotary encoder will send out a
     # range of 0-127 on MIDI ControlChange 20
