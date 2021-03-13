@@ -36,7 +36,8 @@ for pin in button_pins:
     button_state = Debouncer(button_pin)
     buttons_state.append(button_state)
 
-# Initialize the LED
+# Initialize the LED 
+# I'm not currently using the LED for anything other than a debugging tool at this time
 led = digitalio.DigitalInOut(board.D6)
 led.direction = digitalio.Direction.OUTPUT
 
