@@ -13,6 +13,8 @@ midi = adafruit_midi.MIDI(midi_in=usb_midi.ports[0],
                           in_channel=0,
                           out_channel=0)
 
+# TODO: I am repeating some programming between the two button types (toggle
+#  and momentary). I should make a button class to eliminate this duplicated effort.
 # Initialize the toggle type buttons
 # TODO: Use a matrix here
 foot_left = digitalio.DigitalInOut(board.D7)
@@ -21,14 +23,24 @@ foot_right = digitalio.DigitalInOut(board.D8)
 foot_right.switch_to_input(pull=digitalio.Pull.DOWN)
 br = False
 bl = False
+# Creating matrix of toggle switches
+# Define the pins here
+toggle_pins = [board.D7, board.D8]
+toggles = []
+toggles_state = []
+for pin in toggle_pins:
+    toggle_pin = digitalio.DigitalInOut(pin)
+    toggle_pin.switch_to_input(pull=digitalio.Pull.DOWN)
+    toggles.append(toggle_pins)
+    toggle_state = Debouncer(toggle_pin)
+    toggles_state.append(toggle_state)
 
+# TODO: Need to map these buttons to MIDI signals
 # Initialize the momentary type buttons
 # Define the pins here
 button_pins = [board.D3, board.D4]
-# Define some matrixes to hold the buttons and button states
 buttons = []
 buttons_state = []
-# Populate matrixes
 for pin in button_pins:
     button_pin = digitalio.DigitalInOut(pin)
     button_pin.switch_to_input(pull=digitalio.Pull.DOWN)
@@ -49,18 +61,19 @@ last_position = encoder.position
 ## Functions Begin Here
 
 # This function will scan all button states for changes
-def checkForButtonPress():
-        for i in range(2):
-            buttons_state[i].update()
-            thebutton = buttons_state[i]
-            if thebutton.rose:
-                #  if button is pressed...
-                print("button pressed: ", i)
-            if thebutton.fell:
-                #  if the button is released...
-                print("button released: ", i)
+def checkforbuttonpress():
+    for i in range(2):
+        buttons_state[i].update()
+        thebutton = buttons_state[i]
+        if thebutton.rose:
+            #  if button is pressed...
+            print("button pressed: ", i)
+        if thebutton.fell:
+            #  if the button is released...
+            print("button released: ", i)
 
-def midiReceive():
+
+def midireceive():
     msg = midi.receive()
     if isinstance(msg, ControlChange):
         print("control=", msg.control)
@@ -80,8 +93,8 @@ def midiReceive():
 
 # Main Loop
 while True:
-    checkForButtonPress()
-    midiReceive()
+    checkforbuttonpress()
+    midireceive()
 
     # TODO: Make a toggle button function
     if foot_left.value:
