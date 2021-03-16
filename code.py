@@ -16,13 +16,17 @@ midi = adafruit_midi.MIDI(midi_in=usb_midi.ports[0],
 toggles = [board.D3]
 momentaries = [board.D4]
 buttons = []
+# There is no safeguard in place if you go over the number of available MIDI controls
+# Be sure to pay attention to how many buttons you have connected
+midicontrols = [3,9,14,15,20,21,22,23,24,25,26,27,28,29,30,31]
+nextcontrol = 0
 
-# TODO: Add MIDI control numbers to Button
 class Button:
     def __init__(
             self,
             mode,
             pin,
+            midicontrol
     ):
         self.mode = mode
         self.pin = digitalio.DigitalInOut(pin)
@@ -30,28 +34,33 @@ class Button:
         self.pin.pull = digitalio.Pull.DOWN
         self.state = Debouncer(self.pin)
         self.togglestate = 0
+        self.midicontrol = midicontrol
 
     def check():
         for each in buttons:
             each.state.update()
             if each.state.rose:
-                print("button press", each.mode)
+                # print("button press", each.mode)
                 each.togglestate = ~each.togglestate
                 each.togglestate = each.togglestate & 0x7F
-                print(each.togglestate)
+                midi.send(ControlChange(each.midicontrol, each.togglestate))
+                print("CC:", each.midicontrol, each.togglestate)
             if each.state.fell:
-                print("button released", each.mode)
+                # print("button released", each.mode)
                 if each.mode == "momentary":
                     each.togglestate = ~each.togglestate
                     each.togglestate = each.togglestate & 0x7F
-                    print(each.togglestate)
+                    midi.send(ControlChange(each.midicontrol, each.togglestate))
+                    print("CC:", each.midicontrol, each.togglestate)
 
 for each in toggles:
-    newbutton = Button("toggle", each)
+    newbutton = Button("toggle", each, midicontrols[nextcontrol])
+    nextcontrol += 1
     buttons.append(newbutton)
 
 for each in momentaries:
-    newbutton = Button("momentary", each)
+    newbutton = Button("momentary", each, midicontrols[nextcontrol])
+    nextcontrol += 1
     buttons.append(newbutton)
 
 # Initialize the LED
