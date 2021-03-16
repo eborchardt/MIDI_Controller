@@ -13,8 +13,8 @@ midi = adafruit_midi.MIDI(midi_in=usb_midi.ports[0],
                           in_channel=0,
                           out_channel=0)
 
-toggles = [board.D3]
-momentaries = [board.D4]
+toggles = [board.GP16, board.GP17, board.GP18, board.GP19]
+momentaries = [board.GP12, board.GP13, board.GP14, board.GP15]
 buttons = []
 # There is no safeguard in place if you go over the number of available MIDI controls
 # Be sure to pay attention to how many buttons you have connected
@@ -69,7 +69,7 @@ led = digitalio.DigitalInOut(board.D13)
 led.direction = digitalio.Direction.OUTPUT
 
 # Initialize the rotary encoder
-encoder = rotaryio.IncrementalEncoder(board.D1, board.D2)
+encoder = rotaryio.IncrementalEncoder(board.GP21, board.GP22)
 last_position = encoder.position
 
 def midireceive():
