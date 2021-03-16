@@ -65,7 +65,7 @@ for each in momentaries:
 
 # Initialize the LED
 # I'm not currently using the LED for anything other than a debugging tool at this time
-led = digitalio.DigitalInOut(board.D13)
+led = digitalio.DigitalInOut(board.GP25)
 led.direction = digitalio.Direction.OUTPUT
 
 # Initialize the rotary encoder
