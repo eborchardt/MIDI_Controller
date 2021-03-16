@@ -13,54 +13,66 @@ midi = adafruit_midi.MIDI(midi_in=usb_midi.ports[0],
                           in_channel=0,
                           out_channel=0)
 
-# Initialize the toggle type buttons
-# TODO: Use a matrix here
-foot_left = digitalio.DigitalInOut(board.D7)
-foot_left.switch_to_input(pull=digitalio.Pull.DOWN)
-foot_right = digitalio.DigitalInOut(board.D8)
-foot_right.switch_to_input(pull=digitalio.Pull.DOWN)
-br = False
-bl = False
-
-# Initialize the momentary type buttons
-# Define the pins here
-button_pins = [board.D3, board.D4]
-# Define some matrixes to hold the buttons and button states
+toggles = [board.D3]
+momentaries = [board.D4]
 buttons = []
-buttons_state = []
-# Populate matrixes
-for pin in button_pins:
-    button_pin = digitalio.DigitalInOut(pin)
-    button_pin.switch_to_input(pull=digitalio.Pull.DOWN)
-    buttons.append(button_pin)
-    button_state = Debouncer(button_pin)
-    buttons_state.append(button_state)
+# There is no safeguard in place if you go over the number of available MIDI controls
+# Be sure to pay attention to how many buttons you have connected
+midicontrols = [3,9,14,15,20,21,22,23,24,25,26,27,28,29,30,31]
+nextcontrol = 0
 
-# Initialize the LED 
+class Button:
+    def __init__(
+            self,
+            mode,
+            pin,
+            midicontrol
+    ):
+        self.mode = mode
+        self.pin = digitalio.DigitalInOut(pin)
+        self.pin.direction = digitalio.Direction.INPUT
+        self.pin.pull = digitalio.Pull.DOWN
+        self.state = Debouncer(self.pin)
+        self.togglestate = 0
+        self.midicontrol = midicontrol
+
+    def check():
+        for each in buttons:
+            each.state.update()
+            if each.state.rose:
+                # print("button press", each.mode)
+                each.togglestate = ~each.togglestate
+                each.togglestate = each.togglestate & 0x7F
+                midi.send(ControlChange(each.midicontrol, each.togglestate))
+                print("CC:", each.midicontrol, each.togglestate)
+            if each.state.fell:
+                # print("button released", each.mode)
+                if each.mode == "momentary":
+                    each.togglestate = ~each.togglestate
+                    each.togglestate = each.togglestate & 0x7F
+                    midi.send(ControlChange(each.midicontrol, each.togglestate))
+                    print("CC:", each.midicontrol, each.togglestate)
+
+for each in toggles:
+    newbutton = Button("toggle", each, midicontrols[nextcontrol])
+    nextcontrol += 1
+    buttons.append(newbutton)
+
+for each in momentaries:
+    newbutton = Button("momentary", each, midicontrols[nextcontrol])
+    nextcontrol += 1
+    buttons.append(newbutton)
+
+# Initialize the LED
 # I'm not currently using the LED for anything other than a debugging tool at this time
-led = digitalio.DigitalInOut(board.D6)
+led = digitalio.DigitalInOut(board.D13)
 led.direction = digitalio.Direction.OUTPUT
 
 # Initialize the rotary encoder
 encoder = rotaryio.IncrementalEncoder(board.D1, board.D2)
 last_position = encoder.position
 
-
-## Functions Begin Here
-
-# This function will scan all button states for changes
-def checkForButtonPress():
-        for i in range(2):
-            buttons_state[i].update()
-            thebutton = buttons_state[i]
-            if thebutton.rose:
-                #  if button is pressed...
-                print("button pressed: ", i)
-            if thebutton.fell:
-                #  if the button is released...
-                print("button released: ", i)
-
-def midiReceive():
+def midireceive():
     msg = midi.receive()
     if isinstance(msg, ControlChange):
         print("control=", msg.control)
@@ -80,25 +92,8 @@ def midiReceive():
 
 # Main Loop
 while True:
-    checkForButtonPress()
-    midiReceive()
-
-    # TODO: Make a toggle button function
-    if foot_left.value:
-        br = ~br
-        br = br & 0x7F
-        midi.send(ControlChange(48, br))
-        print('48', br)
-        while foot_left.value:
-            pass
-
-    if foot_right.value:
-        br = ~br
-        br = br & 0x7F
-        midi.send(ControlChange(49, br))
-        print('49', br)
-        while foot_right.value:
-            pass
+    Button.check()
+    midireceive()
 
     # This rotary encoder will send out a
     # range of 0-127 on MIDI ControlChange 20
