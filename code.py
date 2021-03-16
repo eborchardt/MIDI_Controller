@@ -13,65 +13,55 @@ midi = adafruit_midi.MIDI(midi_in=usb_midi.ports[0],
                           in_channel=0,
                           out_channel=0)
 
-# TODO: I am repeating some programming between the two button types (toggle
-#  and momentary). I should make a button class to eliminate this duplicated effort.
-# Initialize the toggle type buttons
-# TODO: Use a matrix here
-foot_left = digitalio.DigitalInOut(board.D7)
-foot_left.switch_to_input(pull=digitalio.Pull.DOWN)
-foot_right = digitalio.DigitalInOut(board.D8)
-foot_right.switch_to_input(pull=digitalio.Pull.DOWN)
-br = False
-bl = False
-# Creating matrix of toggle switches
-# Define the pins here
-toggle_pins = [board.D7, board.D8]
-toggles = []
-toggles_state = []
-for pin in toggle_pins:
-    toggle_pin = digitalio.DigitalInOut(pin)
-    toggle_pin.switch_to_input(pull=digitalio.Pull.DOWN)
-    toggles.append(toggle_pins)
-    toggle_state = Debouncer(toggle_pin)
-    toggles_state.append(toggle_state)
-
-# TODO: Need to map these buttons to MIDI signals
-# Initialize the momentary type buttons
-# Define the pins here
-button_pins = [board.D3, board.D4]
+toggles = [board.D3]
+momentaries = [board.D4]
 buttons = []
-buttons_state = []
-for pin in button_pins:
-    button_pin = digitalio.DigitalInOut(pin)
-    button_pin.switch_to_input(pull=digitalio.Pull.DOWN)
-    buttons.append(button_pin)
-    button_state = Debouncer(button_pin)
-    buttons_state.append(button_state)
 
-# Initialize the LED 
+# TODO: Add MIDI control numbers to Button
+class Button:
+    def __init__(
+            self,
+            mode,
+            pin,
+    ):
+        self.mode = mode
+        self.pin = digitalio.DigitalInOut(pin)
+        self.pin.direction = digitalio.Direction.INPUT
+        self.pin.pull = digitalio.Pull.DOWN
+        self.state = Debouncer(self.pin)
+        self.togglestate = 0
+
+    def check():
+        for each in buttons:
+            each.state.update()
+            if each.state.rose:
+                print("button press", each.mode)
+                each.togglestate = ~each.togglestate
+                each.togglestate = each.togglestate & 0x7F
+                print(each.togglestate)
+            if each.state.fell:
+                print("button released", each.mode)
+                if each.mode == "momentary":
+                    each.togglestate = ~each.togglestate
+                    each.togglestate = each.togglestate & 0x7F
+                    print(each.togglestate)
+
+for each in toggles:
+    newbutton = Button("toggle", each)
+    buttons.append(newbutton)
+
+for each in momentaries:
+    newbutton = Button("momentary", each)
+    buttons.append(newbutton)
+
+# Initialize the LED
 # I'm not currently using the LED for anything other than a debugging tool at this time
-led = digitalio.DigitalInOut(board.D6)
+led = digitalio.DigitalInOut(board.D13)
 led.direction = digitalio.Direction.OUTPUT
 
 # Initialize the rotary encoder
 encoder = rotaryio.IncrementalEncoder(board.D1, board.D2)
 last_position = encoder.position
-
-
-## Functions Begin Here
-
-# This function will scan all button states for changes
-def checkforbuttonpress():
-    for i in range(2):
-        buttons_state[i].update()
-        thebutton = buttons_state[i]
-        if thebutton.rose:
-            #  if button is pressed...
-            print("button pressed: ", i)
-        if thebutton.fell:
-            #  if the button is released...
-            print("button released: ", i)
-
 
 def midireceive():
     msg = midi.receive()
@@ -93,25 +83,8 @@ def midireceive():
 
 # Main Loop
 while True:
-    checkforbuttonpress()
+    Button.check()
     midireceive()
-
-    # TODO: Make a toggle button function
-    if foot_left.value:
-        br = ~br
-        br = br & 0x7F
-        midi.send(ControlChange(48, br))
-        print('48', br)
-        while foot_left.value:
-            pass
-
-    if foot_right.value:
-        br = ~br
-        br = br & 0x7F
-        midi.send(ControlChange(49, br))
-        print('49', br)
-        while foot_right.value:
-            pass
 
     # This rotary encoder will send out a
     # range of 0-127 on MIDI ControlChange 20
